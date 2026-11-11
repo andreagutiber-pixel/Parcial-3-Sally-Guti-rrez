@@ -1,4 +1,4 @@
-﻿Nombre: Sally Andrea Gutiérrez Bermúdez
+Nombre: Sally Andrea Gutiérrez Bermúdez
 
 Código: 0182410075
 
@@ -43,3 +43,41 @@ Los códigos S-CN identifican los casos de caja negra propuestos a partir de los
 | R6 · Descuentos | HU-02, HU-03 | S-CN-08: VIP, 15 %. S-CN-09: frecuente, 5 %, y luego ENVIO10, 10 %. |
 | R7 · Cupón desconocido | HU-01 | S-CN-05: PROMO20 genera un error y la cotización queda sin total. |
 | R8 · Mínimo y redondeo | HU-03 | S-CN-10: $4.590 se ajustan al mínimo de $5.000. S-CN-11: $7.650 suben a $7.700. |
+
+## Parte 2. Plan de pruebas
+
+### 2.1 Objetivo y alcance
+
+Comprobar que cada solicitud de cotización produzca el importe previsto o el error definido en R1–R8. Se priorizarán los límites de peso, la validación de datos y cupones, y la aplicación de los descuentos antes del recargo de sábado y domingo. La primera ejecución se hará sobre `v1.0.0` y servirá de referencia para la regresión.
+
+### 2.2 Niveles de prueba
+
+**Unidad.** Probar comportamientos puntuales de `calc` con entradas controladas. Por ejemplo, verificar que un peso de 50,1 kg se rechace y que un envío urbano de 10,75 kg sin descuentos cueste $9.600.
+
+**Integración.** Verificar que la validación del cupón y el cálculo de la cotización trabajen juntos. Con un envío válido, `ENVIO10` debe reducir el saldo después del descuento del cliente. Un cupón desconocido debe interrumpir el cálculo con un error.
+
+**Sistema.** Ejecutar solicitudes completas mediante la función pública del cotizador. Usar como escenario un envío nacional VIP del domingo y comprobar que la cotización final sea $13.500.
+
+**Aceptación.** Contrastar los resultados con HU-01 a HU-03. Verificar, entre otros criterios, que `PROMO20` genere un error, que un subtotal de $4.590 se ajuste a $5.000 y que $7.650 se redondeen a $7.700.
+
+### 2.3 Estrategia, ambiente y roles
+
+Construir una matriz con al menos 20 casos mediante particiones de equivalencia, valores límite y tabla de decisión. Desarrollar a mano al menos cinco resultados esperados y usar el grafo de `calc` para definir caminos de caja blanca. Ejecutar las pruebas automatizadas contra la versión heredada, registrar las diferencias y repetir la suite después de corregirlas.
+
+**Ambiente.** Windows y PowerShell, Python 3 en un entorno virtual, pytest para ejecutar los casos, pytest-cov para medir cobertura y Git para identificar la versión probada.
+
+**Roles.** Diseño: selecciona entradas y verifica los cálculos manuales. Ejecución: automatiza los casos y adjunta resultados y cobertura. Revisión: relaciona los defectos con los requisitos y comprueba las correcciones mediante regresión.
+
+### 2.4 Riesgos y mitigaciones
+
+Confundir cupón ausente con cupón desconocido. Mantener fijos el peso, la zona, el cliente y el día. Variar solo el cupón entre ausente, `ENVIO10` y `PROMO20`.
+
+Que el mínimo o el redondeo oculten un error de cálculo. Incluir casos con subtotales por debajo del mínimo y casos que produzcan un empate exacto de $50.
+
+Obtener resultados difíciles de reproducir. Registrar el commit, las versiones de herramientas y los comandos de ejecución junto con los resultados.
+
+### 2.5 Criterios de entrada y salida
+
+**Entrada.** Parámetros y reglas revisados, código heredado identificado con `v1.0.0`, entorno operativo y casos vinculados a los requisitos con resultados esperados definidos.
+
+**Salida.** Matriz ejecutada, fallos iniciales documentados con pasos de reproducción y regresión aprobada. Archivar las capturas, la proporción de pruebas aprobadas, los defectos por severidad, la densidad de defectos y la cobertura de sentencias y de ramas. Comparar las coberturas de ambas ejecuciones.
