@@ -31,18 +31,18 @@ Código: 0182410075
 
 ### 3. Matriz de trazabilidad
 
-Los códigos S-CN identifican los casos de caja negra propuestos a partir de los criterios de aceptación de Sally. Conserva estos códigos al desarrollar su matriz de casos.
+Cada identificador CP enlaza un criterio de aceptación con el caso de prueba que lo verifica.
 
 | Requisito | Historia | Casos de prueba |
 | --- | --- | --- |
-| R1 · Peso válido | HU-01 | S-CN-01: 50 kg aceptados. S-CN-02: 50,1 kg rechazados. |
-| R2 · Zona y día válidos | HU-01 | S-CN-03: zona «metropolitana» rechazada. S-CN-04: día 8 rechazado. |
-| R3 · Tarifa por peso | HU-02 | S-CN-06: 3 kg en el primer tramo. S-CN-08: 5 kg en el segundo. S-CN-07: 10,75 kg con cobro proporcional. |
-| R4 · Recargo por zona | HU-02 | S-CN-06: rural +25 %. S-CN-07: urbana sin recargo. S-CN-08: nacional +50 %. |
-| R5 · Fin de semana | HU-02 | S-CN-08: el domingo se suman $2.000 después del descuento VIP. |
-| R6 · Descuentos | HU-02, HU-03 | S-CN-08: VIP, 15 %. S-CN-09: frecuente, 5 %, y luego ENVIO10, 10 %. |
-| R7 · Cupón desconocido | HU-01 | S-CN-05: PROMO20 genera un error y la cotización queda sin total. |
-| R8 · Mínimo y redondeo | HU-03 | S-CN-10: $4.590 se ajustan al mínimo de $5.000. S-CN-11: $7.650 suben a $7.700. |
+| R1 · Peso válido | HU-01 | CP-01: 50 kg aceptados. CP-02: 50,1 kg rechazados. |
+| R2 · Zona y día válidos | HU-01 | CP-03: zona «metropolitana» rechazada. CP-04: día 8 rechazado. |
+| R3 · Tarifa por peso | HU-02 | CP-06: 3 kg en el primer tramo. CP-08: 5 kg en el segundo. CP-07: 10,75 kg con cobro proporcional. |
+| R4 · Recargo por zona | HU-02 | CP-06: rural +25 %. CP-07: urbana sin recargo. CP-08: nacional +50 %. |
+| R5 · Fin de semana | HU-02 | CP-08: el domingo se suman $2.000 después del descuento VIP. |
+| R6 · Descuentos | HU-02, HU-03 | CP-08: VIP, 15 %. CP-09: frecuente, 5 %, y luego ENVIO10, 10 %. |
+| R7 · Cupón desconocido | HU-01 | CP-05: PROMO20 genera un error y la cotización queda sin total. |
+| R8 · Mínimo y redondeo | HU-03 | CP-10: $4.590 se ajustan al mínimo de $5.000. CP-11: $7.650 suben a $7.700. |
 
 ## Parte 2. Plan de pruebas
 
@@ -81,3 +81,94 @@ Obtener resultados difíciles de reproducir. Registrar el commit, las versiones 
 **Entrada.** Parámetros y reglas revisados, código heredado identificado con `v1.0.0`, entorno operativo y casos vinculados a los requisitos con resultados esperados definidos.
 
 **Salida.** Matriz ejecutada, fallos iniciales documentados con pasos de reproducción y regresión aprobada. Archivar las capturas, la proporción de pruebas aprobadas, los defectos por severidad, la densidad de defectos y la cobertura de sentencias y de ramas. Comparar las coberturas de ambas ejecuciones.
+
+## Parte 3. Diseño de casos de caja negra
+
+El diseño usa la especificación R1–R8 y reúne 27 casos. Los resultados de la matriz son los valores esperados que se verificarán al ejecutar las pruebas.
+
+### 3.1 Particiones de equivalencia
+
+Se agrupan las entradas por el resultado que se espera de su validación o por el cálculo que activan. El cupón desconocido se considera inválido aunque el resto de la solicitud sea válido.
+
+| Entrada | Clases válidas | Clases inválidas o tratamiento especial |
+| --- | --- | --- |
+| Peso (kg) | 0 < p ≤ 3; 3 < p ≤ 10; 10 < p ≤ 50. | p ≤ 0 y p > 50. Se devuelve «peso inválido». |
+| Zona | Urbana, rural y nacional. Cada zona tiene un recargo distinto. | Zona fuera del catálogo. Se devuelve un error de zona. |
+| Cliente | Normal, frecuente y VIP. Cada tipo tiene un descuento propio. | Tipo fuera del catálogo. La especificación no define qué respuesta debe producir. |
+| Día | Enteros del 1 al 5, sábado (6) y domingo (7). | Entero menor que 1 o mayor que 7. Se devuelve un error de día. Los valores no enteros quedan fuera del dominio descrito. |
+| Cupón | Ausente o ENVIO10. | Código desconocido. Se devuelve un error de cupón y la cotización queda sin total. |
+
+### 3.2 Valores límite de peso
+
+Se toman valores separados por 0,1 kg a cada lado de la frontera. El peso de 3 kg pertenece al primer tramo, 10 kg al segundo y 50 kg sigue siendo válido. Con 10,1 kg la base sube a \$9.080, por lo que el resultado urbano se redondea a \$9.100.
+
+| Frontera | Inferior | Exacto | Superior |
+| --- | --- | --- | --- |
+| 0 kg | −0,1 kg · CP-12 | 0 kg · CP-13 | 0,1 kg · CP-14 |
+| 3 kg (L1) | 2,9 kg · CP-15 | 3 kg · CP-06 | 3,1 kg · CP-16 |
+| 10 kg (L2) | 9,9 kg · CP-17 | 10 kg · CP-18 | 10,1 kg · CP-19 |
+| 50 kg (PMAX) | 49,9 kg · CP-20 | 50 kg · CP-01 | 50,1 kg · CP-27 |
+
+### 3.3 Tabla de decisión
+
+A es el importe después del recargo de zona. Cada combinación se evalúa para día hábil y fin de semana. Se aplica primero el descuento del cliente y luego el cupón sobre el saldo. Al final se suman \$2.000 si corresponde y se aplican el mínimo y el redondeo. Un cupón desconocido interrumpe la cotización.
+
+| Cliente | Cupón | Días 1–5 | Días 6–7 |
+| --- | --- | --- | --- |
+| Normal | Ausente | A | A + \$2.000 |
+| Normal | ENVIO10 | A × 0,90 | A × 0,90 + \$2.000 |
+| Normal | Desconocido | Error de cupón | Error de cupón |
+| Frecuente | Ausente | A × 0,95 | A × 0,95 + \$2.000 |
+| Frecuente | ENVIO10 | A × 0,95 × 0,90 | A × 0,95 × 0,90 + \$2.000 |
+| Frecuente | Desconocido | Error de cupón | Error de cupón |
+| VIP | Ausente | A × 0,85 | A × 0,85 + \$2.000 |
+| VIP | ENVIO10 | A × 0,85 × 0,90 | A × 0,85 × 0,90 + \$2.000 |
+| VIP | Desconocido | Error de cupón | Error de cupón |
+
+### 3.4 Matriz de casos de prueba
+
+Las entradas aparecen como peso, zona, cliente, día y cupón. Los resultados corresponden a la especificación, y la técnica indica cómo se eligió cada caso. Los casos CP-05, CP-21 y CP-22 mantienen fijos los otros datos para aislar el efecto del cupón.
+
+| ID | Requisito | Entradas | Resultado esperado | Técnica |
+| --- | --- | --- | --- | --- |
+| CP-01 | R1, R3, R4 | 50 kg · Nacional · Normal · día 5 · sin cupón | \$61.500 | Límite |
+| CP-02 | R1 | 50,1 kg · Urbana · Normal · día 5 · sin cupón | Error «peso inválido» | Límite |
+| CP-03 | R2 | 2 kg · «metropolitana» · Normal · día 5 · sin cupón | Error de zona | Partición |
+| CP-04 | R2 | 2 kg · Urbana · Normal · día 8 · sin cupón | Error de día | Límite |
+| CP-05 | R7 | 2 kg · Urbana · Normal · día 5 · PROMO20 | Error de cupón | Decisión |
+| CP-06 | R3, R4 | 3 kg · Rural · Normal · día 2 · sin cupón | \$7.500 | Límite |
+| CP-07 | R3, R4 | 10,75 kg · Urbana · Normal · día 2 · sin cupón | \$9.600 | Partición |
+| CP-08 | R3–R6, R8 | 5 kg · Nacional · VIP · día 7 · sin cupón | \$13.500 | Decisión |
+| CP-09 | R4, R6, R8 | 8 kg · Rural · Frecuente · día 4 · ENVIO10 | \$9.600 | Decisión |
+| CP-10 | R6, R8 | 1,5 kg · Urbana · VIP · día 4 · ENVIO10 | \$5.000 | Decisión |
+| CP-11 | R6, R8 | 6 kg · Urbana · VIP · día 4 · sin cupón | \$7.700 | Partición |
+| CP-12 | R1 | -0,1 kg · Urbana · Normal · día 5 · sin cupón | Error «peso inválido» | Límite |
+| CP-13 | R1 | 0 kg · Urbana · Normal · día 5 · sin cupón | Error «peso inválido» | Límite |
+| CP-14 | R1, R3 | 0,1 kg · Urbana · Normal · día 5 · sin cupón | \$6.000 | Límite |
+| CP-15 | R3, R4 | 2,9 kg · Rural · Normal · día 2 · sin cupón | \$7.500 | Límite |
+| CP-16 | R3, R4, R8 | 3,1 kg · Rural · Normal · día 2 · sin cupón | \$11.300 | Límite |
+| CP-17 | R3 | 9,9 kg · Urbana · Normal · día 2 · sin cupón | \$9.000 | Límite |
+| CP-18 | R3 | 10 kg · Urbana · Normal · día 2 · sin cupón | \$9.000 | Límite |
+| CP-19 | R3, R8 | 10,1 kg · Urbana · Normal · día 2 · sin cupón | \$9.100 | Límite |
+| CP-20 | R1, R3, R4, R8 | 49,9 kg · Nacional · Normal · día 5 · sin cupón | \$61.400 | Límite |
+| CP-21 | R7 | 2 kg · Urbana · Normal · día 5 · sin cupón | \$6.000 | Decisión |
+| CP-22 | R6, R7 | 2 kg · Urbana · Normal · día 5 · ENVIO10 | \$5.400 | Decisión |
+| CP-23 | R5, R6, R8 | 5 kg · Nacional · VIP · día 6 · sin cupón | \$13.500 | Decisión |
+| CP-24 | R5, R6, R8 | 5 kg · Nacional · VIP · día 5 · sin cupón | \$11.500 | Decisión |
+| CP-25 | R2 | 2 kg · Urbana · Normal · día 0 · sin cupón | Error de día | Límite |
+| CP-26 | R2, R5 | 2 kg · Urbana · Normal · día 1 · sin cupón | \$6.000 | Límite |
+| CP-27 | R1 | 50,1 kg · Nacional · Normal · día 5 · sin cupón | Error «peso inválido» | Límite |
+
+### 3.5 Cálculo de resultados esperados
+
+**CP-06.** Los 3 kg aún pertenecen al primer tramo. A la base de \$6.000 se suma el 25 % rural: \$6.000 + \$1.500 = \$7.500. El día 2 y el cliente normal no alteran el total. Se devuelven \$7.500.
+
+**CP-07.** El envío supera en 0,75 kg el límite de 10 kg. El exceso cuesta 0,75 × \$800 = \$600. Se suma a la base de \$9.000. La zona urbana y la ausencia de descuentos mantienen el total en \$9.600.
+
+**CP-08.** Base de \$9.000. Recargo nacional: \$9.000 + \$4.500 = \$13.500. Descuento VIP: \$13.500 − \$2.025 = \$11.475. Recargo del domingo: \$11.475 + \$2.000 = \$13.475. Al redondear se obtienen \$13.500.
+
+**CP-09.** Base de \$9.000 y recargo rural de \$2.250: \$11.250. Descuento frecuente: \$11.250 × 0,95 = \$10.687,50. ENVIO10: \$10.687,50 × 0,90 = \$9.618,75. En día hábil, se redondea directamente a \$9.600.
+
+**CP-10.** Base urbana de \$6.000. El descuento VIP deja \$5.100. El cupón reduce ese saldo en \$510, así que el subtotal es \$4.590. El mínimo lleva el resultado a \$5.000.
+
+**CP-11.** La base urbana de 6 kg es \$9.000. El descuento VIP es \$1.350, por lo que el importe queda en \$7.650. Como la distancia a \$7.600 y a \$7.700 es de \$50, se elige \$7.700.
