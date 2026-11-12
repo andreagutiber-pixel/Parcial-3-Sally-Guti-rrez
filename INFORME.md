@@ -317,3 +317,62 @@ Reproducción. Cotizar −0,1 kg, zona urbana, cliente normal, día 5 y cupón a
 La densidad se calculó sobre 37 líneas de envios.py, excluyendo comentarios y líneas vacías. pytest-cov midió 26 ramas entre líneas. El grafo de la Parte 4 muestra por separado las dos comparaciones del peso que están en una sola línea del código.
 
 La cobertura completa permitió observar fallos de reglas de negocio en rutas que sí se ejecutaron. Los 23 casos fallidos constituyen la referencia para comprobar las correcciones posteriores.
+
+## Parte 6. Mantenimiento y refactorización
+
+### 6.1 Diagnóstico del diseño heredado
+
+Las líneas corresponden a envios.py en la etiqueta v1.0.0.
+
+| Mal olor | Líneas | Deuda técnica |
+| --- | --- | --- |
+| Responsabilidades mezcladas | 10–39 | La función decide validez, importes, promociones y salida de texto. Los cambios de una regla se revisan dentro del flujo completo. |
+| Variables de propósito impreciso | 10 y 14–34 | t representa distintos subtotales a lo largo del cálculo. Los nombres cortos ocultan de qué etapa proviene cada importe. |
+| Selección de comportamiento mediante condicionales | 28–34 | Cada tipo de cliente y promoción se maneja dentro de calc. Agregar descuentos aumenta las ramas que debe conocer el cotizador. |
+| Literales de negocio dispersos | 11, 14, 16, 18, 29, 35 y 39 | Los valores usados por peso, tarifa, descuento y redondeo quedan incrustados entre decisiones. Revisarlos requiere recorrer todo el método. |
+| Bandera que introduce un efecto lateral | 10, 37–38 | flag controla una impresión desde la función de cálculo y obliga a los llamadores a conocer una opción de diagnóstico. |
+| Anidamiento del cupón | 32–34 | Comprobar el cupón y aplicarlo son pasos unidos al cálculo. La ruta de cupón desconocido queda sin tratamiento propio. |
+| Asignación sin efecto | 20 | La reasignación de t en la zona urbana agrega trabajo de lectura sin cambiar el resultado. |
+
+### 6.2 Intervenciones de mantenimiento
+
+| Cambio | Tipo | Motivo |
+| --- | --- | --- |
+| DEF-01 | Correctivo | Se rechaza un cupón desconocido antes de calcular el importe. |
+| DEF-02 y DEF-03 | Correctivo | Se validan el destino y el número de día antes de cotizar. |
+| DEF-04 y DEF-05 | Correctivo | Se calcula un cargo para los días 6 y 7 y se suma al saldo después de ambos descuentos. |
+| DEF-06 y DEF-07 | Correctivo | Se usa redondeo decimal a centenas con empate hacia arriba y se corrige el mensaje de peso. |
+| Separar la validación y las etapas del cálculo | Perfectivo | Aísla responsabilidades y reduce la complejidad de calc. |
+| Constantes con nombres | Preventivo | Centraliza las reglas de peso, tarifa y redondeo para reducir inconsistencias. |
+| Estrategia de descuento | Preventivo | Permite cambiar la política de cliente o cupón en su propio componente. |
+| Retiro de flag | Perfectivo | Simplifica la firma y elimina la impresión de diagnóstico del cotizador. |
+
+### 6.3 Diseño de las estrategias de descuento
+
+calc usa EstrategiaDescuento para aplicar primero la política del cliente y luego la política del cupón. SinDescuento conserva el importe. DescuentoPorcentual aplica la tasa de frecuente, VIP o ENVIO10 según el objeto seleccionado.
+
+![Diagrama UML del patrón Estrategia](evidencias/uml-descuentos-cotizacion.png)
+
+*Figura 4. Clases y protocolo de la estrategia de descuentos.*
+
+### 6.4 Verificación de los cambios
+
+La suite corregida aprobó 42 de 42 casos. Se conservaron las entradas, los IDs y los resultados esperados de negocio. CF-15 conserva el importe esperado y comprueba la ausencia del argumento flag y de la impresión. La evidencia del diagnóstico original permanece en la Parte 5.
+
+La Figura 5 corresponde a la regresión repetida en el entorno virtual con Python 3.14.8. La captura muestra 67 sentencias y 14 ramas cubiertas. La tabla conserva la medición de referencia con Python 3.12.14, que registró 68 sentencias. Ambas ejecuciones aprobaron los 42 casos y obtuvieron 100 % de cobertura.
+
+![Regresión de las cotizaciones en PowerShell](evidencias/regresion-cotizaciones.png)
+
+*Figura 5. Regresión de las cotizaciones en PowerShell. Los 42 casos aprueban con el código corregido.*
+
+| Métrica | Código heredado | Código corregido |
+| --- | --- | --- |
+| Casos aprobados | 19 de 42 | 42 de 42 |
+| Casos fallidos | 23 | 0 |
+| Complejidad ciclomática de calc | 15 | 1 |
+| Líneas físicas de envios.py | 39 | 106 |
+| Líneas sin vacías ni comentarios | 37 | 79 |
+| Cobertura de sentencias | 100 % · 29/29 | 100 % · 68/68 |
+| Cobertura de ramas | 100 % · 26/26 | 100 % · 14/14 |
+
+Las decisiones quedaron en funciones específicas. _peso_valido tiene complejidad 4 al contar el cortocircuito. _estrategia_cupon y _calcular_base tienen 3 cada una. El aumento de líneas corresponde a las etapas y clases extraídas. Coverage.py excluye cuatro líneas del protocolo en la versión corregida.

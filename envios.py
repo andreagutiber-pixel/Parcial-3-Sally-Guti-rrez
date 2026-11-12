@@ -1,48 +1,106 @@
-# envios.py
-from decimal import Decimal, ROUND_HALF_UP
+"""Cálculo de cotizaciones con estrategias para los descuentos."""
 
-CONFIG = {
-    "L1": 3,
-    "L2": 10,
-    "RECARGO_RURAL": Decimal("0.25"),
-    "RECARGO_NACIONAL": Decimal("0.50"),
-    "DESC_VIP": Decimal("0.15"),
-    "RECARGO_FINDE": 2000,
+from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Protocol
+
+PESO_MAXIMO = Decimal("50")
+PESO_TRAMO_LIGERO = Decimal("3")
+PESO_TRAMO_MEDIO = Decimal("10")
+BASE_LIGERA = Decimal("6000")
+BASE_MEDIA = Decimal("9000")
+PRECIO_POR_KILO_ADICIONAL = Decimal("800")
+CARGO_DE_FIN_DE_SEMANA = Decimal("2000")
+MINIMO_DE_ENVIO = Decimal("5000")
+CENTENA = Decimal("1E2")
+DIAS_DE_ENVIO = range(1, 8)
+FIN_DE_SEMANA = (6, 7)
+CUPON_ENVIO = "ENVIO10"
+RECARGOS = {
+    "urbana": Decimal("0"),
+    "rural": Decimal("0.25"),
+    "nacional": Decimal("0.50"),
 }
-def calc(p, z, c, d, cup=None, flag=False):
-    p = Decimal(str(p))
-    if not p.is_finite() or p <= 0 or p > 50:
+
+
+class EstrategiaDescuento(Protocol):
+    def aplicar(self, importe: Decimal) -> Decimal:
+        ...
+
+
+class SinDescuento:
+    def aplicar(self, importe: Decimal) -> Decimal:
+        return importe
+
+
+@dataclass(frozen=True)
+class DescuentoPorcentual:
+    porcentaje: Decimal
+
+    def aplicar(self, importe: Decimal) -> Decimal:
+        return importe * (1 - self.porcentaje)
+
+
+DESCUENTO_FRECUENTE = Decimal("0.05")
+DESCUENTO_VIP = Decimal("0.15")
+DESCUENTO_ENVIO10 = Decimal("0.10")
+SIN_DESCUENTO = SinDescuento()
+DESCUENTOS: dict[str, EstrategiaDescuento] = {
+    "frecuente": DescuentoPorcentual(DESCUENTO_FRECUENTE),
+    "vip": DescuentoPorcentual(DESCUENTO_VIP),
+}
+ESTRATEGIA_CUPON = DescuentoPorcentual(DESCUENTO_ENVIO10)
+
+
+def _peso_valido(peso: float) -> Decimal:
+    kilos = Decimal(str(peso))
+    if not kilos.is_finite() or not 0 < kilos <= PESO_MAXIMO:
         raise ValueError("peso inválido")
-    if d not in range(1, 8):
-        raise ValueError("día inválido")
-    if p <= CONFIG["L1"]:
-        t = 6000
-    elif p <= CONFIG["L2"]:
-        t = 9000
-    else:
-        t = 9000 + (p - CONFIG["L2"]) * 800
-    if z == "urbana":
-        t = t
-    elif z == "rural":
-        t = t + t * CONFIG["RECARGO_RURAL"]
-    elif z == "nacional":
-        t = t + t * CONFIG["RECARGO_NACIONAL"]
-    else:
+    return kilos
+
+
+def _recargo_zona(zona: str) -> Decimal:
+    if zona not in RECARGOS:
         raise ValueError("zona inválida")
-    if c == "frecuente":
-        t = t - t * Decimal("0.05")
-    if c == "vip":
-        t = t - t * CONFIG["DESC_VIP"]
-    if cup != None:
-        if cup == "ENVIO10":
-            t = t - t * Decimal("0.10")
-        else:
-            raise ValueError("cupón inválido")
-    # fin de semana
-    if d in (6, 7):
-        t = t + CONFIG["RECARGO_FINDE"]
-    if t < 5000:
-        t = 5000
-    if flag:
-        print("costo:", t)
-    return int(Decimal(t).quantize(Decimal("1E2"), rounding=ROUND_HALF_UP))
+    return RECARGOS[zona]
+
+
+def _validar_dia(dia: int) -> None:
+    if dia not in DIAS_DE_ENVIO:
+        raise ValueError("día inválido")
+
+
+def _estrategia_cupon(cupon: str | None) -> EstrategiaDescuento:
+    if cupon is None:
+        return SIN_DESCUENTO
+    if cupon == CUPON_ENVIO:
+        return ESTRATEGIA_CUPON
+    raise ValueError("cupón inválido")
+
+
+def _calcular_base(kilos: Decimal) -> Decimal:
+    if kilos <= PESO_TRAMO_LIGERO:
+        return BASE_LIGERA
+    if kilos <= PESO_TRAMO_MEDIO:
+        return BASE_MEDIA
+    return BASE_MEDIA + (kilos - PESO_TRAMO_MEDIO) * PRECIO_POR_KILO_ADICIONAL
+
+
+def _cargo_por_dia(dia: int) -> Decimal:
+    return CARGO_DE_FIN_DE_SEMANA if dia in FIN_DE_SEMANA else Decimal("0")
+
+
+def _redondear(total: Decimal) -> int:
+    return int(max(MINIMO_DE_ENVIO, total).quantize(CENTENA, ROUND_HALF_UP))
+
+
+def calc(p, z, c, d, cup=None):
+    """Calcula el importe final de un envío, expresado en pesos."""
+    kilos = _peso_valido(p)
+    recargo = _recargo_zona(z)
+    _validar_dia(d)
+    promocion = _estrategia_cupon(cup)
+    con_zona = _calcular_base(kilos) * (1 + recargo)
+    cliente = DESCUENTOS.get(c, SIN_DESCUENTO)
+    descontado = promocion.aplicar(cliente.aplicar(con_zona))
+    return _redondear(descontado + _cargo_por_dia(d))
