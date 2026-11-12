@@ -12,7 +12,7 @@ CONFIG = {
 def calc(p, z, c, d, cup=None, flag=False):
     p = Decimal(str(p))
     if not p.is_finite() or p <= 0 or p > 50:
-        raise ValueError("peso invalido")
+        raise ValueError("peso inválido")
     if d not in range(1, 8):
         raise ValueError("día inválido")
     if p <= CONFIG["L1"]:
