@@ -376,3 +376,64 @@ La Figura 5 corresponde a la regresión repetida en el entorno virtual con Pytho
 | Cobertura de ramas | 100 % · 26/26 | 100 % · 14/14 |
 
 Las decisiones quedaron en funciones específicas. _peso_valido tiene complejidad 4 al contar el cortocircuito. _estrategia_cupon y _calcular_base tienen 3 cada una. El aumento de líneas corresponde a las etapas y clases extraídas. Coverage.py excluye cuatro líneas del protocolo en la versión corregida.
+
+## Parte 7. Historial del repositorio y preparación de la entrega
+
+### De la línea base al cotizador corregido
+
+El punto de partida quedó identificado con v1.0.0 en f7dfe9b. A partir de esa línea base, main incorporó la suite test/suite, siete correcciones independientes en las ramas fix/DEF-01 a fix/DEF-07 y el rediseño de los descuentos en refactor/estrategia. Cada incorporación puede localizarse en su commit de merge.
+
+### Decisión de versionado
+
+La versión corregida se identifica como v2.0.0 porque desaparece flag de la firma pública. Antes se aceptaba `calc(p, z, c, d, cup=None, flag=False)`. Ahora se usa `calc(p, z, c, d, cup=None)`. Los clientes que pasaban flag por posición o por nombre deben retirarlo para evitar TypeError. Si necesitan mostrar la cotización, pueden usar el importe que devuelve la función. La regresión de la Parte 6 registró 42 de 42 pruebas aprobadas y 100 % de cobertura de ramas de envios.py.
+
+El resumen de cambios queda en [CHANGELOG.md](CHANGELOG.md) y la guía de actualización en [NOTAS_DE_LANZAMIENTO.md](NOTAS_DE_LANZAMIENTO.md). La etiqueta y el lanzamiento de GitHub están pendientes de publicación.
+
+### Evidencia del historial
+
+Salida de `git log --oneline --graph --all` hasta 6e0c46f, con la Parte 6 integrada.
+
+```text
+*   6e0c46f Integra la refactorización del cotizador
+|\
+| * b81a85e Aplica estrategias de descuento y documenta la regresión
+|/
+*   a96de9a Integra DEF-07
+|\
+| * 65d750f DEF-07 Alinea el mensaje de peso con el requisito
+|/
+*   87d4cc0 Integra DEF-06
+|\
+| * cde846e DEF-06 Redondea los importes al múltiplo de cien
+|/
+*   91f4dca Integra DEF-05
+|\
+| * 3c2dce1 DEF-05 Aplica el cargo al saldo descontado
+|/
+*   15aa27d Integra DEF-04
+|\
+| * da9143b DEF-04 Incluye el día seis en el recargo
+|/
+*   bdfe08e Integra DEF-03
+|\
+| * f6a972d DEF-03 Impide cotizar fuera del calendario válido
+|/
+*   f4db93f Integra DEF-02
+|\
+| * e93fd88 DEF-02 Requiere un destino del catálogo
+|/
+*   53904bd Integra DEF-01
+|\
+| * 489b985 DEF-01 Rechaza códigos de cupón desconocidos
+|/
+*   b03f44c Integra las pruebas del cotizador heredado
+|\
+| * 26877b1 Verifica las cotizaciones y documenta los hallazgos iniciales
+|/
+* f1c82b8 Parte 4 Registro del  grafo de flujo y las rutas de prueba
+* 4bc2554 Parte 3 de diseño de casos de caja negra, agrego las tablas y los casos de caja negra
+* 2e6b9e8 Defino la estrategia y los criterios de prueba de la parte 2
+* b069803 Documenta los requisitos, criterios y casos vinculados
+* 068898c Registra la identificación y los parámetros
+* f7dfe9b Guardar la configuracion inicial de los parametros
+```
