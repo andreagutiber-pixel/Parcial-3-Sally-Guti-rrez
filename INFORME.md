@@ -172,3 +172,70 @@ Las entradas aparecen como peso, zona, cliente, día y cupón. Los resultados co
 **CP-10.** Base urbana de \$6.000. El descuento VIP deja \$5.100. El cupón reduce ese saldo en \$510, así que el subtotal es \$4.590. El mínimo lleva el resultado a \$5.000.
 
 **CP-11.** La base urbana de 6 kg es \$9.000. El descuento VIP es \$1.350, por lo que el importe queda en \$7.650. Como la distancia a \$7.600 y a \$7.700 es de \$50, se elige \$7.700.
+
+## Parte 4. Diseño de casos de caja blanca
+
+### 4.1 Grafo de flujo
+
+El diagrama representa la ejecución de `calc` en `v1.0.0`. Las decisiones aparecen en rombos y las acciones en rectángulos. El nodo 30 reúne la salida por excepción y la devolución del total.
+
+![Grafo de flujo de calc en la versión heredada](evidencias/diagrama-caja-blanca.png)
+
+*Figura 1. Grafo de flujo de calc en la versión heredada.*
+
+### 4.2 Complejidad ciclomática
+
+El grafo del código consta de 30 nodos y 43 aristas. El retorno y la excepción confluyen en la salida 30. Se comprobaron 14 nodos de decisión.
+
+| Método | Cálculo | Resultado |
+| --- | --- | --- |
+| Aristas y nodos | V(G) = E − N + 2 = 43 − 30 + 2. El grafo tiene una entrada y una salida común. | 15 |
+| Nodos predicado | V(G) = P + 1 = 14 + 1. La condición compuesta del peso se divide por cortocircuito en los nodos 02 y 03. | 15 |
+| Regiones | 14 interiores y 1 exterior. Interiores por bloque: validación (2), tarifa (2), zona (3), fin de semana (1), cliente (2), cupón (2), mínimo (1) y flag (1). | 15 |
+
+### 4.3 Caminos independientes y casos de prueba
+
+La tabla contiene 15 recorridos independientes, verificados con sus vectores de aristas. Las referencias entre paréntesis reutilizan casos de caja negra. En cada recorrido se usa `flag=False`, salvo cuando la entrada indica `flag=True`. El resultado esperado se toma de la especificación y el observado se obtuvo ejecutando `v1.0.0`.
+
+| Camino y referencia | Entradas y foco | Secuencia de nodos | Esperado | Observado en v1.0.0 |
+| --- | --- | --- | --- | --- |
+| CF-01 (CP-21) | Cotización de referencia. 2 kg · urbana · normal · día 5 · sin cupón. | 01 → 02 → 03 → 05 → 06 → 10 → 11 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | \$6.000 | \$6.000 |
+| CF-02 (CP-12) | Peso negativo. -0,1 kg · urbana · normal · día 5 · sin cupón. | 01 → 02 → 04 → 30 | Error «peso inválido» | ValueError «peso invalido» |
+| CF-03 (CP-02) | Exceso del límite de peso. 50,1 kg · urbana · normal · día 5 · sin cupón. | 01 → 02 → 03 → 04 → 30 | Error «peso inválido» | ValueError «peso invalido» |
+| CF-04 (CP-17) | Peso en tramo intermedio. 9,9 kg · urbana · normal · día 2 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 08 → 10 → 11 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | \$9.000 | \$9.000 |
+| CF-05 (CP-19) | Peso con excedente. 10,1 kg · urbana · normal · día 2 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 09 → 10 → 11 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | \$9.100 | \$9.000 |
+| CF-06 (CP-15) | Destino rural. 2,9 kg · rural · normal · día 2 · sin cupón. | 01 → 02 → 03 → 05 → 06 → 10 → 12 → 13 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | \$7.500 | \$7.500 |
+| CF-07 (CP-01) | Destino nacional. 50 kg · nacional · normal · día 5 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 09 → 10 → 12 → 14 → 15 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | \$61.500 | \$61.500 |
+| CF-08 (CP-03) | Zona desconocida. 2 kg · metropolitana · normal · día 5 · sin cupón. | 01 → 02 → 03 → 05 → 06 → 10 → 12 → 14 → 16 → 18 → 20 → 22 → 25 → 27 → 29 → 30 | Error de zona | \$6.000 |
+| CF-09 (CP-08) | Recargo dominical con VIP. 5 kg · nacional · vip · día 7 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 08 → 10 → 12 → 14 → 15 → 16 → 17 → 18 → 20 → 21 → 22 → 25 → 27 → 29 → 30 | \$13.500 | \$13.100 |
+| CF-10 | Beneficio de cliente frecuente. 8 kg · rural · frecuente · día 4 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 08 → 10 → 12 → 13 → 16 → 18 → 19 → 20 → 22 → 25 → 27 → 29 → 30 | \$10.700 | \$10.600 |
+| CF-11 (CP-11) | Beneficio VIP y empate. 6 kg · urbana · vip · día 4 · sin cupón. | 01 → 02 → 03 → 05 → 07 → 08 → 10 → 11 → 16 → 18 → 20 → 21 → 22 → 25 → 27 → 29 → 30 | \$7.700 | \$7.600 |
+| CF-12 (CP-05) | Rechazo de cupón desconocido. 2 kg · urbana · normal · día 5 · PROMO20. | 01 → 02 → 03 → 05 → 06 → 10 → 11 → 16 → 18 → 20 → 22 → 23 → 25 → 27 → 29 → 30 | Error de cupón | \$6.000 |
+| CF-13 (CP-22) | Cupón autorizado. 2 kg · urbana · normal · día 5 · ENVIO10. | 01 → 02 → 03 → 05 → 06 → 10 → 11 → 16 → 18 → 20 → 22 → 23 → 24 → 25 → 27 → 29 → 30 | \$5.400 | \$5.400 |
+| CF-14 (CP-10) | Límite mínimo de cobro. 1,5 kg · urbana · vip · día 4 · ENVIO10. | 01 → 02 → 03 → 05 → 06 → 10 → 11 → 16 → 18 → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27 → 29 → 30 | \$5.000 | \$5.000 |
+| CF-15 | Rama de impresión. 10 kg · urbana · normal · día 2 · sin cupón · flag=True. | 01 → 02 → 03 → 05 → 07 → 08 → 10 → 11 → 16 → 18 → 20 → 22 → 25 → 27 → 28 → 29 → 30 | \$9.000 y una impresión de diagnóstico | \$9.000 e imprime «costo: 9000» |
+
+En CF-12, la ejecución pasa por los nodos 22 y 23 y omite el descuento del cupón. Devuelve \$6.000, aunque R7 exige un error. CF-15 verifica la salida de diagnóstico del argumento `flag`. Las demás diferencias observadas se conservan como evidencia para la ejecución de la suite.
+
+### 4.4 Cobertura de sentencias y ramas
+
+**Sentencias.** CF-02, CF-05, CF-09, CF-10, CF-14, CF-15 recorren conjuntamente todos los nodos ejecutables de `calc` en el grafo. Este conjunto incluye las dos formas de salir de la función: la instrucción que lanza el error de peso y el retorno normal. También alcanza la impresión de diagnóstico.
+
+**Ramas.** La suite completa CF-01 a CF-15 recorre las 43 aristas del grafo. La tabla identifica un caso que toma cada salida Sí y No de los 14 predicados. Esta es la cobertura prevista por el diseño. En la Parte 5 se registrará la medición de la herramienta.
+
+| Nodo predicado | Salida Sí | Salida No |
+| --- | --- | --- |
+| 02 · p ≤ 0 | CF-02 | CF-01 |
+| 03 · p > 50 | CF-03 | CF-01 |
+| 05 · p ≤ L1 | CF-01 | CF-04 |
+| 07 · p ≤ L2 | CF-04 | CF-05 |
+| 10 · Zona urbana | CF-01 | CF-06 |
+| 12 · Zona rural | CF-06 | CF-07 |
+| 14 · Zona nacional | CF-07 | CF-08 |
+| 16 · d > 6 | CF-09 | CF-01 |
+| 18 · Cliente frecuente | CF-10 | CF-01 |
+| 20 · Cliente VIP | CF-09 | CF-01 |
+| 22 · Hay cupón | CF-12 | CF-01 |
+| 23 · Cupón = ENVIO10 | CF-13 | CF-12 |
+| 25 · t < 5.000 | CF-14 | CF-01 |
+| 27 · flag es verdadero | CF-15 | CF-01 |
