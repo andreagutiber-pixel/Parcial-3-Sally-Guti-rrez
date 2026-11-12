@@ -239,3 +239,81 @@ En CF-12, la ejecución pasa por los nodos 22 y 23 y omite el descuento del cup�
 | 23 · Cupón = ENVIO10 | CF-13 | CF-12 |
 | 25 · t < 5.000 | CF-14 | CF-01 |
 | 27 · flag es verdadero | CF-15 | CF-01 |
+
+## Parte 5. Automatización, ejecución y defectos
+
+### 5.1 Pruebas automatizadas y entorno
+
+El archivo tests/test_cotizaciones.py organiza los casos CP y CF en tres grupos: importes, rechazos y diagnóstico. Las pruebas de importe comparan el total esperado, las de validación comprueban ValueError y CF-15 verifica la salida de diagnóstico. Se ejecutaron los 42 casos sobre una copia de la versión heredada configurada.
+
+Entorno de ejecución: Python 3.12.14, pytest 9.2.0, pytest-cov 7.1.0 y Coverage.py 7.17.2. Las figuras 2 y 3 corresponden a una repetición en el entorno virtual local con Python 3.14.8. Se obtuvieron los mismos totales y cobertura.
+
+```powershell
+python -m pytest -q --tb=short --cov=envios --cov-branch --cov-report=term-missing --cov-report=json:coverage.json
+```
+
+![Resumen y cobertura de la suite inicial](evidencias/cobertura-suite-inicial.png)
+
+*Figura 2. Resultados y cobertura de la suite completa en el entorno virtual.*
+
+![Fallo reproducible por cupón desconocido](evidencias/caso-cupon-invalido.png)
+
+*Figura 3. Ejecución aislada de CP-05. El código heredado no lanza el error esperado ante un cupón desconocido.*
+
+### 5.2 Hallazgos y evidencia de reproducción
+
+Los fallos de la suite se agruparon por causa. La prioridad P1 se asignó a cotizaciones que aceptan datos inválidos u omiten un recargo; P2 a errores de cálculo y P3 a discrepancias del mensaje. Cada ficha indica cómo reproducir el fallo en v1.0.0.
+
+| Defecto | Requisito | Severidad / prioridad | Casos de referencia |
+| --- | --- | --- | --- |
+| DEF-01 · Se cotiza con un cupón que no existe | R7 | Alta / P1 | CP-05, CF-12 |
+| DEF-02 · Una zona fuera del catálogo obtiene precio | R2 | Alta / P1 | CP-03, CF-08 |
+| DEF-03 · Un día inexistente activa el recargo | R2 | Alta / P1 | CP-04, CP-25 |
+| DEF-04 · Se omite el recargo del día 6 | R5 | Alta / P1 | CP-23 |
+| DEF-05 · El descuento VIP afecta el recargo del domingo | R5 | Media / P2 | CP-08, CF-09 |
+| DEF-06 · Se pierde el incremento en un empate de redondeo | R8 | Media / P2 | CP-11, CF-11 |
+| DEF-07 · Texto de la excepción difiere del criterio | R1 | Baja / P3 | CP-12, CF-02 |
+
+#### DEF-01 · Se cotiza con un cupón que no existe
+
+Reproducción. Solicitar una cotización de 2 kg, urbana, cliente normal, día 5, con PROMO20. Esperado: Error de cupón y solicitud sin total. Obtenido: \$6.000. Justificación: El cupón desconocido no activa una excepción en las líneas 32–34. El rechazo es una condición explícita de R7.
+
+#### DEF-02 · Una zona fuera del catálogo obtiene precio
+
+Reproducción. Ingresar 2 kg, «metropolitana», cliente normal, día 5 y cupón ausente. Esperado: Error de zona. Obtenido: \$6.000. Justificación: La falta de una salida de error tras las zonas reconocidas (líneas 19–24) permite continuar con una solicitud inválida.
+
+#### DEF-03 · Un día inexistente activa el recargo
+
+Reproducción. Ingresar 2 kg, urbana, cliente normal, día 8 y cupón ausente. Esperado: Error de día. Obtenido: \$8.000. Justificación: El valor 8 pasa la condición d > 6 de la línea 26. Se emite un total a partir de un día inválido.
+
+#### DEF-04 · Se omite el recargo del día 6
+
+Reproducción. Cotizar 5 kg, zona nacional, cliente VIP, día 6 y cupón ausente. Esperado: \$13.500. Obtenido: \$11.400. Justificación: El sábado no pasa la condición de la línea 26. Al redondear correctamente el subtotal sin recargo, el total seguiría siendo solo \$11.500.
+
+#### DEF-05 · El descuento VIP afecta el recargo del domingo
+
+Reproducción. Cotizar 5 kg, zona nacional, cliente VIP, día 7 y cupón ausente. Esperado: \$13.500. Obtenido: \$13.100. Justificación: El código suma el recargo antes de descontar (líneas 26–31). El subtotal de \$13.175 daría \$13.200 con el redondeo correcto.
+
+#### DEF-06 · Se pierde el incremento en un empate de redondeo
+
+Reproducción. Cotizar 6 kg, zona urbana, cliente VIP, día 4 y cupón ausente. Esperado: \$7.700. Obtenido: \$7.600. Justificación: El subtotal queda en \$7.650 y la regla obliga a elegir el centenar superior. La conversión de la línea 39 elimina la fracción.
+
+#### DEF-07 · Texto de la excepción difiere del criterio
+
+Reproducción. Cotizar −0,1 kg, zona urbana, cliente normal, día 5 y cupón ausente. Esperado: ValueError con «peso inválido». Obtenido: ValueError con «peso invalido». Justificación: La validación detecta el peso inválido. La línea 12 difiere en la tilde del mensaje, con impacto limitado al texto de salida.
+
+### 5.3 Resultados y métricas de calidad
+
+| Métrica | Resultado | Base de cálculo |
+| --- | --- | --- |
+| Casos ejecutados | 42 | 27 de caja negra + 15 de caja blanca |
+| Casos aprobados | 19 (45,24 %) | 19 ÷ 42 × 100 |
+| Casos fallidos | 23 | Resultados que difieren de la especificación |
+| Defectos por severidad | 4 altos, 2 medios, 1 bajo | Conteo de defectos únicos |
+| Densidad de defectos | 18,92 por cada 100 líneas | 7 ÷ 37 × 100 |
+| Cobertura de sentencias | 100 % | 29 de 29 sentencias medidas |
+| Cobertura de ramas | 100 % | 26 de 26 ramas medidas |
+
+La densidad se calculó sobre 37 líneas de envios.py, excluyendo comentarios y líneas vacías. pytest-cov midió 26 ramas entre líneas. El grafo de la Parte 4 muestra por separado las dos comparaciones del peso que están en una sola línea del código.
+
+La cobertura completa permitió observar fallos de reglas de negocio en rutas que sí se ejecutaron. Los 23 casos fallidos constituyen la referencia para comprobar las correcciones posteriores.
