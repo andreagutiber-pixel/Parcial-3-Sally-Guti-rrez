@@ -1,5 +1,7 @@
 """Pruebas de importes, validación de entradas y salida de diagnóstico."""
 
+from inspect import signature
+
 import pytest
 
 from envios import calc
@@ -69,6 +71,7 @@ def test_rechazo_de_solicitud(datos, mensaje):
 @pytest.mark.parametrize("datos, total", [
     pytest.param((10, 'urbana', 'normal', 2, None), 9000, id='CF-15'),
 ])
-def test_costo_con_diagnostico(datos, total, capsys):
-    assert calc(*datos, flag=True) == total
-    assert capsys.readouterr().out.startswith("costo:")
+def test_cotizacion_sin_diagnostico(datos, total, capsys):
+    assert calc(*datos) == total
+    assert "flag" not in signature(calc).parameters
+    assert capsys.readouterr().out == ""
