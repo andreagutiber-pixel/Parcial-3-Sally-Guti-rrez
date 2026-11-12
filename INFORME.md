@@ -387,7 +387,7 @@ El punto de partida quedó identificado con v1.0.0 en f7dfe9b. A partir de esa l
 
 La versión corregida se identifica como v2.0.0 porque desaparece flag de la firma pública. Antes se aceptaba `calc(p, z, c, d, cup=None, flag=False)`. Ahora se usa `calc(p, z, c, d, cup=None)`. Los clientes que pasaban flag por posición o por nombre deben retirarlo para evitar TypeError. Si necesitan mostrar la cotización, pueden usar el importe que devuelve la función. La regresión de la Parte 6 registró 42 de 42 pruebas aprobadas y 100 % de cobertura de ramas de envios.py.
 
-El resumen de cambios queda en [CHANGELOG.md](CHANGELOG.md) y la guía de actualización en [NOTAS_DE_LANZAMIENTO.md](NOTAS_DE_LANZAMIENTO.md). La etiqueta y el lanzamiento de GitHub están pendientes de publicación.
+El resumen de cambios queda en [CHANGELOG.md](CHANGELOG.md) y la guía de actualización en [NOTAS_DE_LANZAMIENTO.md](NOTAS_DE_LANZAMIENTO.md). La etiqueta v2.0.0 corresponde a la versión corregida previa a la solicitud de cambio.
 
 ### Evidencia del historial
 
@@ -437,3 +437,26 @@ Salida de `git log --oneline --graph --all` hasta 6e0c46f, con la Parte 6 integr
 * 068898c Registra la identificación y los parámetros
 * f7dfe9b Guardar la configuracion inicial de los parametros
 ```
+
+## Parte 8. Incorporación del destino San Andrés
+
+El código del cambio se obtiene con (4 + 5) mod 3 = 0. Los envíos con destino `insular` se cotizan con el factor 1,70. La solicitud se rechaza si trae un código promocional, incluso cuando ese código es válido para otros destinos.
+
+### Trazabilidad de la ampliación
+
+| Regla revisada | Historia vinculada | Validación automatizada | Elemento del cotizador |
+| --- | --- | --- | --- |
+| R2 · Validación del destino | HU-01 | AC-01 y AC-02 cotizan San Andrés. CP-03 mantiene el rechazo de metropolitana. | RECARGOS y _recargo_zona |
+| R4 · Cálculo del recargo | HU-02 | AC-01 comprueba que ($9.000 + 0,5 × $800) × 1,70 da $15.980, redondeados a $16.000. | RECARGOS y _calcular_base |
+| R6 y R7 · Promociones y descuentos | HU-01 y HU-03 | AC-02 confirma $6.000 × 1,70 × 0,95 = $9.690, redondeados a $9.700. AC-03 y AC-04 rechazan ENVIO10 y PROMO20. CP-05 y CP-22 conservan las reglas urbanas. | _estrategia_cupon y DESCUENTOS |
+| R8 · Resultado redondeado | HU-03 | AC-01 y AC-02 verifican el redondeo a la centena con el nuevo destino. | _redondear |
+
+### Clasificación y pruebas
+
+La incorporación se clasifica como mantenimiento perfectivo. Extiende el catálogo de destinos y sus reglas de cotización. Los cuatro casos de tests/test_envios_a_san_andres.py se ejecutaron sobre la versión corregida previa. Todos fallaron al intentar usar un destino que aún no pertenecía al catálogo. Al incorporar el recargo y la restricción de promociones, la suite completa registró 46 pruebas aprobadas. Coverage.py midió 70 sentencias y 16 ramas, todas cubiertas.
+
+[Salida de las pruebas antes y después del cambio](evidencias/pruebas-destino-san-andres.txt)
+
+### Versión del cambio
+
+El destino se incorpora en v2.1.0. Es una actualización menor porque amplía las opciones de cotización sin cambiar los parámetros de `calc` ni las cotizaciones que ya eran válidas. La rama del cambio es `feat/destino-san-andres`. Los cambios por versión se registran en [CHANGELOG.md](CHANGELOG.md).

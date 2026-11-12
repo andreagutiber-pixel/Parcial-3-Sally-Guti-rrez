@@ -1,0 +1,61 @@
+Parte 8. Incorporación del destino San Andrés
+
+Antes del cambio
+python -m pytest -p no:cacheprovider --color=no -q --tb=short tests/test_envios_a_san_andres.py
+
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+_________________ test_cotizacion_insular_con_peso_excedente __________________
+tests\test_envios_a_san_andres.py:10: in test_cotizacion_insular_con_peso_excedente
+    assert calc(10.5, "insular", "normal", 2, None) == 16000
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+envios.py:100: in calc
+    recargo = _recargo_zona(z)
+              ^^^^^^^^^^^^^^^^
+envios.py:64: in _recargo_zona
+    raise ValueError("zona inválida")
+E   ValueError: zona inválida
+______________ test_descuento_de_cliente_frecuente_en_san_andres ______________
+tests\test_envios_a_san_andres.py:15: in test_descuento_de_cliente_frecuente_en_san_andres
+    assert calc(3, "insular", "frecuente", 2) == 9700
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+envios.py:100: in calc
+    recargo = _recargo_zona(z)
+              ^^^^^^^^^^^^^^^^
+envios.py:64: in _recargo_zona
+    raise ValueError("zona inválida")
+E   ValueError: zona inválida
+______ test_solicitud_insular_con_codigo_promocional_es_invalida[AC-03] _______
+tests\test_envios_a_san_andres.py:23: in test_solicitud_insular_con_codigo_promocional_es_invalida
+    with pytest.raises(ValueError, match="^el destino insular no admite cupones$"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError:
+E   - zona inválida
+E   + el destino insular no admite cupones
+______ test_solicitud_insular_con_codigo_promocional_es_invalida[AC-04] _______
+tests\test_envios_a_san_andres.py:23: in test_solicitud_insular_con_codigo_promocional_es_invalida
+    with pytest.raises(ValueError, match="^el destino insular no admite cupones$"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError:
+E   - zona inválida
+E   + el destino insular no admite cupones
+=========================== short test summary info ===========================
+FAILED tests/test_envios_a_san_andres.py::test_cotizacion_insular_con_peso_excedente
+FAILED tests/test_envios_a_san_andres.py::test_descuento_de_cliente_frecuente_en_san_andres
+FAILED tests/test_envios_a_san_andres.py::test_solicitud_insular_con_codigo_promocional_es_invalida[AC-03]
+FAILED tests/test_envios_a_san_andres.py::test_solicitud_insular_con_codigo_promocional_es_invalida[AC-04]
+4 failed in 0.07s
+
+Después del cambio
+python -m pytest -p no:cacheprovider --color=no -q --cov=envios --cov-branch --cov-report=term-missing
+
+..............................................                           [100%]
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.14.7-final-0 _______________
+
+Name        Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------
+envios.py      70      0     16      0   100%
+-------------------------------------------------------
+TOTAL          70      0     16      0   100%
+46 passed in 0.14s
