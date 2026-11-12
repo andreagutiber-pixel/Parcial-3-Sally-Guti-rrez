@@ -16,10 +16,12 @@ CENTENA = Decimal("1E2")
 DIAS_DE_ENVIO = range(1, 8)
 FIN_DE_SEMANA = (6, 7)
 CUPON_ENVIO = "ENVIO10"
+DESTINO_INSULAR = "insular"
 RECARGOS = {
     "urbana": Decimal("0"),
     "rural": Decimal("0.25"),
     "nacional": Decimal("0.50"),
+    DESTINO_INSULAR: Decimal("0.70"),
 }
 
 
@@ -70,9 +72,11 @@ def _validar_dia(dia: int) -> None:
         raise ValueError("día inválido")
 
 
-def _estrategia_cupon(cupon: str | None) -> EstrategiaDescuento:
+def _estrategia_cupon(cupon: str | None, zona: str) -> EstrategiaDescuento:
     if cupon is None:
         return SIN_DESCUENTO
+    if zona == DESTINO_INSULAR:
+        raise ValueError("el destino insular no admite cupones")
     if cupon == CUPON_ENVIO:
         return ESTRATEGIA_CUPON
     raise ValueError("cupón inválido")
@@ -99,7 +103,7 @@ def calc(p, z, c, d, cup=None):
     kilos = _peso_valido(p)
     recargo = _recargo_zona(z)
     _validar_dia(d)
-    promocion = _estrategia_cupon(cup)
+    promocion = _estrategia_cupon(cup, z)
     con_zona = _calcular_base(kilos) * (1 + recargo)
     cliente = DESCUENTOS.get(c, SIN_DESCUENTO)
     descontado = promocion.aplicar(cliente.aplicar(con_zona))

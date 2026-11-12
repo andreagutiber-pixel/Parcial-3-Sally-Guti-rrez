@@ -4,6 +4,17 @@ Este registro sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) 
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-11
+
+### Added
+
+- Se habilitó San Andrés como destino `insular`, con un incremento del 70 % sobre la tarifa base.
+- Se añadieron cuatro casos que verifican el excedente de peso, el descuento frecuente y la validación promocional.
+
+### Changed
+
+- La validación de promociones rechaza cualquier código suministrado en un envío insular.
+
 ## [2.0.0] - 2026-11-11
 
 ### Added
@@ -30,6 +41,7 @@ Este registro sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) 
 
 - Cotizador heredado con los parámetros iniciales, usado como referencia para las pruebas.
 
-[Unreleased]: https://github.com/andreagutiber-pixel/Parcial-3-Sally-Guti-rrez/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/andreagutiber-pixel/Parcial-3-Sally-Guti-rrez/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/andreagutiber-pixel/Parcial-3-Sally-Guti-rrez/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/andreagutiber-pixel/Parcial-3-Sally-Guti-rrez/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/andreagutiber-pixel/Parcial-3-Sally-Guti-rrez/tree/v1.0.0
